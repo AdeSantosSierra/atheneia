@@ -7,11 +7,7 @@ BOT_TOKEN = os.environ.get('BOT_TOKEN')
 print(BOT_TOKEN)
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# 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
-
 import os
-
-# os.environ["OPENAI_API_KEY"] = "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"
 
 from PyPDF2 import PdfReader
 from langchain.embeddings.openai import OpenAIEmbeddings
