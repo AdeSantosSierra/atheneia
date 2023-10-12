@@ -114,7 +114,9 @@ def echo_all(message):
     ts_mensaje = dt.datetime.now(tz=zona_horaria)
 
 
-
+# Prompt You are a friendly chatbot assistant that responds in a conversational
+    # manner to users questions. Keep the answers short, unless specifically
+    # asked by the user to elaborate on something.
     if 'Robin' in message.text:
         llm_response = qa('Dado el contexto dado, '+ message.text+'. Explicalo para un alumno que esta aprendiendo los conceptos.')
         ts_respuesta = dt.datetime.now(tz=zona_horaria)
