@@ -63,9 +63,6 @@ db = Chroma(persist_directory="/home/pi/Documents/academIA/data",
 print(db._collection.count())
 retriever = db.as_retriever()
 
-
-g
-
 memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
 # Prompts
@@ -77,7 +74,8 @@ Si la respuesta no se encuentra en el contexto, responde amablemente y con un me
 Pregunta: {question}
 """
 PROMPT = PromptTemplate(
-    template=prompt_template, input_variables=["context", "question"]
+    template=prompt_template,
+    input_variables=["context", "question"]
 )
 
 chain_type_kwargs = {"prompt": PROMPT}
@@ -94,8 +92,8 @@ print('Preguntas!')
 
 
 # MongoDB
-mongo_user = 'atheneia'
-mongo_pass = 'atheneia'
+mongo_user = os.environ.get('MONGO_USER')
+mongo_pass = os.environ.get('MONGO_USER')
 mongo_host = f'mongodb+srv://{mongo_user}:{mongo_pass}@atheneia.dqt9y1t.mongodb.net/?retryWrites=true&w=majority'
 mongo_port = 27017
 
@@ -117,16 +115,12 @@ def echo_all(message):
 # Prompt You are a friendly chatbot assistant that responds in a conversational
     # manner to users questions. Keep the answers short, unless specifically
     # asked by the user to elaborate on something.
-    if 'Robin' in message.text:
-        llm_response = qa('Dado el contexto dado, '+ message.text+'. Explicalo para un alumno que esta aprendiendo los conceptos.')
-        ts_respuesta = dt.datetime.now(tz=zona_horaria)
-        ts_diferencia = ts_respuesta - ts_mensaje
-        ts_diferencia = ts_diferencia.seconds
-        answer = llm_response['result']
-    else:
-        answer = 'En nada estaremos ready!'
-        ts_respuesta = -1
-        ts_diferencia = -1
+    llm_response = qa('Dado el contexto dado, '+ message.text+'. Explicalo para un alumno que esta aprendiendo los conceptos.')
+    ts_respuesta = dt.datetime.now(tz=zona_horaria)
+    ts_diferencia = ts_respuesta - ts_mensaje
+    ts_diferencia = ts_diferencia.seconds
+    answer = llm_response['result']
+
 
     # bot.reply_to(message, answer)
     bot.send_message(chat_id=user_id, text=answer)
