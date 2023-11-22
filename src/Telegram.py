@@ -14,12 +14,6 @@ from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores import FAISS
 
-feynman_lectures_path = '/home/pi/Documents/academIA/docs/The_Feynman_Lectures_on_Physics_-_VOL1.pdf'
-feynman_lectures_path = '/home/pi/Documents/academIA/docs/Serway.pdf'
-
-list_pdfs = ['Serway.pdf', 'Purcell.pdf', 'Feynman_vol2.pdf']
-# feynman_lectures_path = '/home/pi/Documents/academIA/docs/Reitz-Milford.pdf'
-
 from dotenv import load_dotenv, find_dotenv
 import os
 
@@ -31,7 +25,8 @@ from langchain.embeddings import HuggingFaceEmbeddings, SentenceTransformerEmbed
 from langchain.vectorstores import Chroma
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
-from langchain.chains import RetrievalQA
+from langchain.chains import RetrievalQA, ConversationalRetrievalChain, RetrievalQAWithSourcesChain
+from langchain.chains.question_answering import load_qa_chain
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import PromptTemplate
 
@@ -61,32 +56,69 @@ embeddings = OpenAIEmbeddings()
 db = Chroma(persist_directory="/home/pi/Documents/academIA/data",
             embedding_function=OpenAIEmbeddings())
 print(db._collection.count())
-retriever = db.as_retriever()
+# retriever = db.as_retriever(search_type="similarity_score_threshold", search_kwargs={"score_threshold": .8})
+retriever = db.as_retriever(search_type="mmr")
 
-memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+memory = ConversationBufferMemory(memory_key="chat_history",
+                                  return_messages=True)
 
 # Prompts
 prompt_template = """Usa los siguientes elementos de contexto para responder la pregunta al final. 
-Si la respuesta no se encuentra en el contexto, responde amablemente y con un mensaje alegre.
+Si la respuesta no se encuentra en el contexto, responde amablemente y con un mensaje upbeat diciendo que tu contexto
+se restringe exclusívamente al contenido de Electricidad y Magnetismo.
+Por supuesto, si te saluda o realiza preguntas amigables puedes responderle sin acudir al contexto. 
+
+{context}
+
+Recuerda siempre las posibles preguntas anteriores {chat_history}
+
+Pregunta: {question}
+"""
+
+# Prompts
+prompt_template_no_hist = """Usa los siguientes elementos de contexto para responder la pregunta al final. 
+Si la respuesta no se encuentra en el contexto, responde amablemente y con un mensaje upbeat diciendo que tu contexto
+se restringe exclusívamente al contenido de Electricidad y Magnetismo.
+Por supuesto, si te saluda o realiza preguntas amigables puedes responderle sin acudir al contexto. 
 
 {context}
 
 Pregunta: {question}
 """
-PROMPT = PromptTemplate(
-    template=prompt_template,
-    input_variables=["context", "question"]
-)
 
-chain_type_kwargs = {"prompt": PROMPT}
+
+#prompt = PromptTemplate(
+#    template=prompt_template,
+#    input_variables=["context", "question"]
+#)
+
+memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+prompt = PromptTemplate(input_variables=['chat_history', "question", "context"], template=prompt_template)
+# prompt = PromptTemplate(input_variables=["question", "context"], template=prompt_template_no_hist)
+
+
+chain_type_kwargs = {"prompt": prompt}
 
 # Generate
 llm = ChatOpenAI(model_name='gpt-3.5-turbo', temperature=0)
-qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff",
-                                 retriever=retriever,
-                                 memory=memory,
-                                 chain_type_kwargs=chain_type_kwargs
-                                 )
+# qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff",
+#                                 retriever=retriever,
+#                                 memory=memory,
+#                                 chain_type_kwargs=chain_type_kwargs
+#                                 )
+
+qa = ConversationalRetrievalChain.from_llm(llm=llm, chain_type="stuff",
+                                           retriever=retriever,
+                                           memory=memory,
+                                           combine_docs_chain_kwargs={"prompt": prompt}
+                                           )
+
+# qa = load_qa_chain(llm=llm, chain_type="stuff",
+#                                           # retriever=retriever,
+#                                           memory=memory,
+#                                           prompt=prompt
+#                                           )
+
 
 print('Preguntas!')
 
@@ -105,6 +137,7 @@ db = mongo_client.Atheneia.Conversations
 zona_horaria = pytz.timezone('Europe/Madrid')
 
 
+chat_history = []
 
 @bot.message_handler(func=lambda msg: True)
 def echo_all(message):
@@ -115,11 +148,13 @@ def echo_all(message):
 # Prompt You are a friendly chatbot assistant that responds in a conversational
     # manner to users questions. Keep the answers short, unless specifically
     # asked by the user to elaborate on something.
-    llm_response = qa('Dado el contexto dado, '+ message.text+'. Explicalo para un alumno que esta aprendiendo los conceptos.')
+    print(message.text)
+    llm_response = qa({'question': message.text, 'chat_history':chat_history}) # question -> ConversationalRetrievalChain, query
     ts_respuesta = dt.datetime.now(tz=zona_horaria)
     ts_diferencia = ts_respuesta - ts_mensaje
     ts_diferencia = ts_diferencia.seconds
-    answer = llm_response['result']
+    answer = llm_response['answer'] # answer -> ConversationalRetrievalChain, result
+    chat_history.append((message.text, answer))
 
 
     # bot.reply_to(message, answer)

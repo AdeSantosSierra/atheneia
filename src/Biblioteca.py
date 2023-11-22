@@ -1,7 +1,7 @@
 from langchain.vectorstores import Chroma
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.embeddings import HuggingFaceEmbeddings, SentenceTransformerEmbeddings
-from langchain.document_loaders import PyMuPDFLoader
+from langchain.document_loaders import PyMuPDFLoader, PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import Chroma
 import chromadb
@@ -14,7 +14,7 @@ import os
 class Biblioteca:
 
     def __init__(self):
-        self.list_of_pdf_files = ['Serway', 'Purcell', 'Feynman_vol2', 'Griffiths', 'em_cambridge']
+        self.list_of_pdf_files = ['serway_7ed_vol_2', 'Tipler', 'Purcell', 'David_Griffiths', 'em_cambridge']
         self.path_pdf_files    = '/home/pi/Documents/academIA/docs/'
 
         # Configurar el splitter
@@ -26,7 +26,8 @@ class Biblioteca:
 
     def load_files(self):
         for iter_pdf in self.list_of_pdf_files:
-            loader = PyMuPDFLoader(f'{self.path_pdf_files}{iter_pdf}.pdf')
+            print(iter_pdf)
+            loader = PyPDFLoader(f'{self.path_pdf_files}{iter_pdf}.pdf')
             # Cada pagina es un documento
             self.documents.extend(loader.load())
 
